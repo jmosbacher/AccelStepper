@@ -20,6 +20,8 @@ void dump(uint8_t* p, int l)
 }
 #endif
 
+
+
 void AccelStepper::moveTo(long absolute)
 {
     if (_targetPos != absolute)
@@ -44,24 +46,34 @@ boolean AccelStepper::runSpeed()
     if (!_stepInterval)
 	return false;
 
+    _currentPos = _realPosition();
+    if (_failedSteps >= MAX_RETRIES) {
+        moveTo(_currentPos);
+        return false;
+    }
+        
     unsigned long time = micros();   
     if (time - _lastStepTime >= _stepInterval)
     {
-	if (_direction == DIRECTION_CW)
-	{
-	    // Clockwise
-	    _currentPos += 1;
-	}
-	else
-	{
-	    // Anticlockwise  
-	    _currentPos -= 1;
-	}
-	step(_currentPos);
-
-	_lastStepTime = time; // Caution: does not account for costs in step()
-
-	return true;
+        if (_direction == DIRECTION_CW)
+        {
+            // Clockwise
+            _nextStep = _currentPos+1;
+        }
+        else
+        {
+            // Anticlockwise  
+            _nextStep = _currentPos-1;
+        }
+        step(_nextStep);
+        _currentPos = _realPosition();
+        if (_currentPos == _nextStep){ // Step has been succesful.
+            _lastStepTime = time;  // Caution: does not account for costs in step()
+            _failedSteps = 0;
+        } 
+        else _failedSteps+=1; // step failed.
+        return true;
+	
     }
     else
     {
@@ -222,6 +234,44 @@ AccelStepper::AccelStepper(uint8_t interface, uint8_t pin1, uint8_t pin2, uint8_
     setAcceleration(1);
 }
 
+AccelStepper::AccelStepper(long (*realPosition)(),uint8_t interface, uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, bool enable)
+{
+    _interface = interface;
+    _currentPos = 0;
+    _targetPos = 0;
+    _speed = 0.0;
+    _maxSpeed = 1.0;
+    _acceleration = 0.0;
+    _sqrt_twoa = 1.0;
+    _stepInterval = 0;
+    _minPulseWidth = 1;
+    _enablePin = 0xff;
+    _lastStepTime = 0;
+    _pin[0] = pin1;
+    _pin[1] = pin2;
+    _pin[2] = pin3;
+    _pin[3] = pin4;
+    _enableInverted = false;
+    
+    // NEW
+    _n = 0;
+    _c0 = 0.0;
+    _cn = 0.0;
+    _cmin = 1.0;
+    _direction = DIRECTION_CCW;
+
+    int i;
+    for (i = 0; i < 4; i++)
+	_pinInverted[i] = 0;
+    if (enable)
+	enableOutputs();
+    // Some reasonable default
+    setAcceleration(1);
+    _realPosition = realPosition;
+    _nextStep = 0;
+    _failedSteps = 0;
+}
+
 AccelStepper::AccelStepper(void (*forward)(), void (*backward)())
 {
     _interface = 0;
@@ -255,6 +305,45 @@ AccelStepper::AccelStepper(void (*forward)(), void (*backward)())
     // Some reasonable default
     setAcceleration(1);
 }
+
+
+AccelStepper::AccelStepper(long (*realPosition)(), void (*forward)(), void (*backward)())
+{
+    _interface = 0;
+    _currentPos = 0;
+    _targetPos = 0;
+    _speed = 0.0;
+    _maxSpeed = 1.0;
+    _acceleration = 0.0;
+    _sqrt_twoa = 1.0;
+    _stepInterval = 0;
+    _minPulseWidth = 1;
+    _enablePin = 0xff;
+    _lastStepTime = 0;
+    _pin[0] = 0;
+    _pin[1] = 0;
+    _pin[2] = 0;
+    _pin[3] = 0;
+    _forward = forward;
+    _backward = backward;
+
+    // NEW
+    _n = 0;
+    _c0 = 0.0;
+    _cn = 0.0;
+    _cmin = 1.0;
+    _direction = DIRECTION_CCW;
+
+    int i;
+    for (i = 0; i < 4; i++)
+	_pinInverted[i] = 0;
+    // Some reasonable default
+    setAcceleration(1);
+    _realPosition = realPosition;
+    _nextStep = 0;
+    _failedSteps = 0;
+}
+
 
 void AccelStepper::setMaxSpeed(float speed)
 {

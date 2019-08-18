@@ -258,6 +258,9 @@
 #include <wiring.h>
 #endif
 
+#ifndef MAX_RETRIES
+#define MAX_RETRIES 1000
+#endif
 // These defs cause trouble on some versions of Arduino
 #undef round
 
@@ -354,6 +357,7 @@ public:
     /// \param[in] enable If this is true (the default), enableOutputs() will be called to enable
     /// the output pins at construction time.
     AccelStepper(uint8_t interface = AccelStepper::FULL4WIRE, uint8_t pin1 = 2, uint8_t pin2 = 3, uint8_t pin3 = 4, uint8_t pin4 = 5, bool enable = true);
+    AccelStepper(long (*true_position)(),uint8_t interface = AccelStepper::FULL4WIRE, uint8_t pin1 = 2, uint8_t pin2 = 3, uint8_t pin3 = 4, uint8_t pin4 = 5, bool enable = true);
 
     /// Alternate Constructor which will call your own functions for forward and backward steps. 
     /// You can have multiple simultaneous steppers, all moving
@@ -364,7 +368,7 @@ public:
     /// \param[in] forward void-returning procedure that will make a forward step
     /// \param[in] backward void-returning procedure that will make a backward step
     AccelStepper(void (*forward)(), void (*backward)());
-    
+    AccelStepper(long (*true_position)(), void (*forward)(), void (*backward)());
     /// Set the target position. The run() function will try to move the motor (at most one step per call)
     /// from the current position to the target position set by the most
     /// recent call to this function. Caution: moveTo() also recalculates the speed for the next step. 
@@ -671,6 +675,11 @@ private:
     /// Min step size in microseconds based on maxSpeed
     float _cmin; // at max speed
 
+    long (*_realPosition)();
+
+    long _nextStep;
+    
+    long _failedSteps;
 };
 
 /// @example Random.pde
