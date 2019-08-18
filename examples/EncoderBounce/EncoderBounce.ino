@@ -16,7 +16,7 @@ long realPos()
   return encoder.read();
   }
 // Define a stepper and the pins it will use
-AccelStepper stepper(realPos); // Defaults to AccelStepper::FULL4WIRE (4 pins) on 2, 3, 4, 5
+AccelStepper stepper(realPos, AccelStepper::DRIVER, 4,5); // Defaults to AccelStepper::FULL4WIRE (4 pins) on 2, 3, 4, 5
 
 
 
