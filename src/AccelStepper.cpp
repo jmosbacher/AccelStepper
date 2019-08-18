@@ -46,11 +46,12 @@ boolean AccelStepper::runSpeed()
     if (!_stepInterval)
 	return false;
 
-    _currentPos = _realPosition();
-    if (_failedSteps >= MAX_RETRIES) {
-        moveTo(_currentPos);
-        return false;
-    }
+    
+    // if (_failedSteps >= MAX_RETRIES) {
+    //     moveTo(_currentPos);
+    //     _failedSteps = 0;
+    //     return false;
+    // }
         
     unsigned long time = micros();   
     if (time - _lastStepTime >= _stepInterval)
@@ -66,12 +67,7 @@ boolean AccelStepper::runSpeed()
             _nextStep = _currentPos-1;
         }
         step(_nextStep);
-        _currentPos = _realPosition();
-        if (_currentPos == _nextStep){ // Step has been succesful.
-            _lastStepTime = time;  // Caution: does not account for costs in step()
-            _failedSteps = 0;
-        } 
-        else _failedSteps+=1; // step failed.
+        
         return true;
 	
     }
@@ -194,6 +190,7 @@ void AccelStepper::computeNewSpeed()
 // returns true if the motor is still running to the target position.
 boolean AccelStepper::run()
 {
+    _currentPos = _realPosition();
     if (runSpeed())
 	computeNewSpeed();
     return _speed != 0.0 || distanceToGo() != 0;
